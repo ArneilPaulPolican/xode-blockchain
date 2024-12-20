@@ -1,0 +1,28 @@
+{
+  "name": "xode-blockchain",
+  "version": "1.0.0",
+  "description": "https://libro.blockdeep.dev/index.html",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ArneilPaulPolican/xode-blockchain.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ArneilPaulPolican/xode-blockchain/issues"
+  },
+  "homepage": "https://github.com/ArneilPaulPolican/xode-blockchain#readme",
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "polkadot-api": "^1.8.0"
+  }
+}
