@@ -9,42 +9,60 @@ import path from 'path';
 const rpc = process.env.RPC;
 const wsProvider = getWsProvider(rpc as string)
 
-async function test(): Promise<void> {
-  const provider = withLogsRecorder((line) => console.log(line), wsProvider)
-  const client = createClient(provider)
-  try {
-    // Start Smoldot client and specify the WebSocket provider
-    const smoldotClient = start();
+async function main() {
+    // Load a string chain specification.
+  const chainSpec: string = fs.readFileSync('./chainSpec.json', 'utf8');
 
-    // Read chain specification from a file (ensure the path is correct)
-    const chainSpecPath = path.join(__dirname, '..', 'chainSpec.json');  // adjust this path
-    const chainSpec = fs.readFileSync(chainSpecPath, 'utf8');
+  // A single client can be used to initialize multiple chains.
+  const client = smoldot.start();
 
-    // Add the chain specification to the Smoldot client
-    const chain = await smoldotClient.addChain({ chainSpec });
-    console.log('Successfully connected to the chain using Smoldot!');
+  const chain = await  client.addChain({ chainSpec });
 
-    // Fetch the genesis block hash using Smoldot
-    const genesisHash = await (await chain).sendJsonRpc('chain_getBlockHash');
-    console.log('Genesis Hash:', genesisHash);
+  // Send a JSON-RPC request
+  chain.sendJsonRpc('{"jsonrpc":"2.0","id":1,"method":"chain_getBlockHash","params":[]}');
 
-    // Optionally, subscribe to real-time notifications from the chain
-    chain.nextJsonRpcResponse().then((response: any) => {
-      console.log('Received notification/response:', response);
-    });
-
-    // Further interaction with the `client` (Polkadot API)
-    // const chainInfo =  client.rpc.system.chain();
-    // console.log('Chain Info (Polkadot API):', chainInfo);
-
-  } catch (error) {
-    console.log('Error: ', error)
-  }
+  // Wait for a JSON-RPC response to come back. This is typically done in a loop in the background.
+  const jsonRpcResponse: any = chain.nextJsonRpcResponse();
+  console.log(jsonRpcResponse);
 }
+main();
 
-test().catch((error) => {
-  console.error('Error executing test:', error);
-});
+// async function test(): Promise<void> {
+//   const provider = withLogsRecorder((line) => console.log(line), wsProvider)
+//   const client = createClient(provider)
+//   try {
+//     // Start Smoldot client and specify the WebSocket provider
+//     const smoldotClient = start();
+
+//     // Read chain specification from a file (ensure the path is correct)
+//     const chainSpecPath = path.join(__dirname, '..', 'chainSpec.json');  // adjust this path
+//     const chainSpec = fs.readFileSync(chainSpecPath, 'utf8');
+
+//     // Add the chain specification to the Smoldot client
+//     const chain = await smoldotClient.addChain({ chainSpec });
+//     console.log('Successfully connected to the chain using Smoldot!');
+
+//     // Fetch the genesis block hash using Smoldot
+//     const genesisHash = await (await chain).sendJsonRpc('chain_getBlockHash');
+//     console.log('Genesis Hash:', genesisHash);
+
+//     // Optionally, subscribe to real-time notifications from the chain
+//     chain.nextJsonRpcResponse().then((response: any) => {
+//       console.log('Received notification/response:', response);
+//     });
+
+//     // Further interaction with the `client` (Polkadot API)
+//     // const chainInfo =  client.rpc.system.chain();
+//     // console.log('Chain Info (Polkadot API):', chainInfo);
+
+//   } catch (error) {
+//     console.log('Error: ', error)
+//   }
+// }
+
+// test().catch((error) => {
+//   console.error('Error executing test:', error);
+// });
 
 // async function local() {
 //   const client = start();
