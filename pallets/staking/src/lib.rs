@@ -1,15 +1,29 @@
 //! # Xode Staking Pallet
 //! 
-//! XaverNodes
-//! Candidates
-//! DesiredCandidates
-//! Invulnerables
-//! 
-//! Steps
-//! 1. add_xaver_nodes (Block 0/Hooks)
-//! 2. register_candidate
-//! 3. bond_candidate
-//! 
+//! This is free and unencumbered software released into the public domain.
+//!
+//! Anyone is free to copy, modify, publish, use, compile, sell, or
+//! distribute this software, either in source code form or as a compiled
+//! binary, for any purpose, commercial or non-commercial, and by any
+//! means.
+//!
+//! In jurisdictions that recognize copyright laws, the author or authors
+//! of this software dedicate any and all copyright interest in the
+//! software to the public domain. We make this dedication for the benefit
+//! of the public at large and to the detriment of our heirs and
+//! successors. We intend this dedication to be an overt act of
+//! relinquishment in perpetuity of all present and future rights to this
+//! software under copyright law.
+//!
+//! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+//! EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+//! MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+//! IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+//! OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+//! ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+//! OTHER DEALINGS IN THE SOFTWARE.
+//!
+//! For more information, please refer to <http://unlicense.org>
 #![cfg_attr(not(feature = "std"), no_std)]
 
 pub use pallet::*;
@@ -21,14 +35,16 @@ mod mock;
 mod tests;
 
 pub mod weights;
+pub use weights::*;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
 #[frame_support::pallet]
 pub mod pallet {
+	use super::*;
 	use frame_support::dispatch::DispatchResult;
-use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
+	use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::traits::{AccountIdConversion, Zero,};
 	use sp_runtime::Saturating;
@@ -43,7 +59,7 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 	use frame_support::PalletId;
 	use frame_support::traits::{Currency, ReservableCurrency};
 
-	type BalanceOf<T> = <<T as Config>::StakingCurrency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+	pub type BalanceOf<T> = <<T as Config>::StakingCurrency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 	/// Runtime configuration
 	#[pallet::config]
@@ -57,7 +73,7 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// A type representing the weights required by the dispatchables of this pallet.
-		type WeightInfo: crate::weights::WeightInfo;
+		type WeightInfo: WeightInfo;
 
 		/// The maximum proposed candidates
 		type MaxProposedCandidates: Get<u32>;
@@ -243,7 +259,7 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 
 		/// Register a new candidate in the Proposed Candidate list
 		#[pallet::call_index(1)]
-		#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().writes(1))]
+		#[pallet::weight(<weights::SubstrateWeight<T> as WeightInfo>::register_candidate())]
 		pub fn register_candidate(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
             ensure!(!ProposedCandidates::<T>::get().iter().any(|c| c.who == who), Error::<T>::ProposedCandidateAlreadyExist);
@@ -276,7 +292,7 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 		/// Todo: 
 		/// 	How do we deal with the reserve and unreserve for some reason fails?
 		#[pallet::call_index(2)]
-		#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().writes(1))]
+		#[pallet::weight(<weights::SubstrateWeight<T> as WeightInfo>::bond_candidate())]
 		pub fn bond_candidate(origin: OriginFor<T>, new_bond: BalanceOf<T>,) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 
@@ -291,7 +307,7 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 					if candidate.bond > new_bond {
 						// Decrease the bond and reserve or might leave (new bond == 0)
 						// Unreserve the difference, of the new bond is 0, unreserve the whole bond because the bond difference
-						// is equal to the exisiting bond because any number substracted by 0 would remain the same.
+						// is equal to the existing bond because any number subtracted by 0 would remain the same.
 						let bond_diff = candidate.bond.saturating_sub(new_bond);
 						candidate.bond = new_bond;
 						if bond_diff > Zero::zero() {
@@ -319,7 +335,7 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 		/// Note:
 		/// 	Numbers accepted are from 1 to 100 and no irrational numbers
 		#[pallet::call_index(3)]
-		#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().writes(1))]
+		#[pallet::weight(<weights::SubstrateWeight<T> as WeightInfo>::set_commission_of_candidate())]
 		pub fn set_commission_of_candidate(origin: OriginFor<T>, commission: u8) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			// Commission control (1-100 percent only)
@@ -343,7 +359,7 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 		/// 	Once the leaving flag is set to true, immediately remove the account in the
 		/// 	Waiting Candidate list.
 		#[pallet::call_index(4)]
-		#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().writes(1))]
+		#[pallet::weight(<weights::SubstrateWeight<T> as WeightInfo>::leave_candidate())]
 		pub fn leave_candidate(origin: OriginFor<T>,) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			ProposedCandidates::<T>::mutate(|candidates| {
@@ -367,7 +383,7 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 		/// 	How to handle the reservation if there is a failure in adding the delegation.
 		/// 	Clean delegations when a candidate leaves to save space.
 		#[pallet::call_index(5)]
-		#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().writes(1))]
+		#[pallet::weight(<weights::SubstrateWeight<T> as WeightInfo>::stake_candidate())]
 		pub fn stake_candidate(origin: OriginFor<T>, candidate: T::AccountId, amount: BalanceOf<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			
@@ -387,7 +403,7 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 				let _ = delegations.try_push(Delegation { delegator: who.clone(), stake: amount }).map_err(|_| Error::<T>::DelegationsMaxExceeded)?;
 			}
 
-			// Finaly, update the storage
+			// Finally, update the storage
 			Delegations::<T>::insert(&candidate, delegations);
 			
 			// Update the proposed candidate total stake amount
@@ -396,22 +412,22 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 			Ok(().into())
 		}
 
-		/// Unstake Proposed Candidate
+		/// Un-stake Proposed Candidate
 		/// Note:
-		/// 	Remove first the delegation (stake amount) before unreserving
+		/// 	Remove first the delegation (stake amount) before un-reserving
 		#[pallet::call_index(6)]
-		#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().writes(1))]
+		#[pallet::weight(<weights::SubstrateWeight<T> as WeightInfo>::unstake_candidate())]
 		pub fn unstake_candidate(origin: OriginFor<T>, candidate: T::AccountId) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			
 			// Extract the delegations for that candidate
 			let mut delegations = Delegations::<T>::get(&candidate).ok_or(Error::<T>::DelegationsDoesNotExist)?;
 			
-			// Extract the current stake of that delegator who wants to unstake
+			// Extract the current stake of that delegator who wants to un-stake
 			let position = delegations.iter().position(|c| c.delegator == who).ok_or(Error::<T>::DelegationDelegatorDoesNotExist)?;
 			let stake_amount = delegations[position].stake;
 
-			// New list of delegations without the delegator who unstake
+			// New list of delegations without the delegator who un-stake
 			delegations.retain(|c| c.delegator != who);
 
 			// Update the delegation storage
@@ -419,11 +435,11 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 				// If there are no more delegators, remove the delegation for that candidate
 				Delegations::<T>::remove(&candidate);
 			} else {
-				// Insert the new delegations without the delegator who unstake
+				// Insert the new delegations without the delegator who un-stake
 				Delegations::<T>::insert(&candidate, delegations);
 			}
 
-			// Finaly, unreserve the balance
+			// Finally, unreserve the balance
 			T::StakingCurrency::unreserve(&who, stake_amount);
 
 			// Update the proposed candidate total stake amount
@@ -434,18 +450,12 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 
 		/// Offline Proposed Candidate 
 		/// Note:
-		///		Temporarily leave the candidacy without having to unbond and unstake
+		///		Temporarily leave the candidacy without having to un-bond and un-stake
 		#[pallet::call_index(7)]
-		#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().writes(1))]
+		#[pallet::weight(<weights::SubstrateWeight<T> as WeightInfo>::offline_candidate())]
 		pub fn offline_candidate(origin: OriginFor<T>,) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			ProposedCandidates::<T>::mutate(|candidates| {
-				if let Some(candidate) = candidates.iter_mut().find(|c| c.who == who) {
-					candidate.offline = true;
-					candidate.last_updated = frame_system::Pallet::<T>::block_number();
-				}
-			});
-			Self::deposit_event(Event::ProposedCandidateOffline { _proposed_candidate: who });
+			let _ = Self::offline_proposed_candidate(who,true);
 			Ok(().into())
 		}
 
@@ -453,16 +463,10 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 		/// Note:
 		///		Make the candidate online again
 		#[pallet::call_index(8)]
-		#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().writes(1))]
+		#[pallet::weight(<weights::SubstrateWeight<T> as WeightInfo>::online_candidate())]
 		pub fn online_candidate(origin: OriginFor<T>,) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			ProposedCandidates::<T>::mutate(|candidates| {
-				if let Some(candidate) = candidates.iter_mut().find(|c| c.who == who) {
-					candidate.offline = false;
-					candidate.last_updated = frame_system::Pallet::<T>::block_number();
-				}
-			});
-			Self::deposit_event(Event::ProposedCandidateOnline { _proposed_candidate: who });
+			let _ = Self::offline_proposed_candidate(who,false);
 			Ok(().into())
 		}
 	}
@@ -482,7 +486,7 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 			account
 		}
 
-		/// Add an account to pallet_collator_selection invulnerables
+		/// Add an account to pallet_collator_selection invulnerable
 		/// Substrate Reference:
 		/// 	https://github.com/paritytech/polkadot-sdk/blob/stable2409/cumulus/pallets/collator-selection/src/lib.rs#L841
 		pub fn add_invulnerable (invulnerable: T::AccountId) -> DispatchResult {
@@ -577,7 +581,7 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 
 		/// Prepare waiting candidates
 		/// Note:
-		/// 	This function is trigerred every new session.  Waiting candidates is just a storage that
+		/// 	This function is triggered every new session.  Waiting candidates is just a storage that
 		/// 	merge the desired candidates and the proposed candidates.
 		pub fn prepare_waiting_candidates() -> DispatchResult {
 			let desired_candidates = DesiredCandidates::<T>::get();
@@ -631,9 +635,26 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 			Ok(())
 		}
 
+		/// Go offline/online proposed candidates
+		/// Note:
+		pub fn offline_proposed_candidate(proposed_candidate: T::AccountId, offline: bool) -> DispatchResult {
+			ProposedCandidates::<T>::mutate(|candidates| {
+				if let Some(candidate) = candidates.iter_mut().find(|c| c.who == proposed_candidate) {
+					candidate.offline = offline;
+					candidate.last_updated = frame_system::Pallet::<T>::block_number();
+				}
+			});
+			if offline {
+				Self::deposit_event(Event::ProposedCandidateOffline { _proposed_candidate: proposed_candidate });
+			} else {
+				Self::deposit_event(Event::ProposedCandidateOnline { _proposed_candidate: proposed_candidate });
+			}
+			Ok(().into())
+		}
+
 		/// Compute total_stake in the candidate information
 		/// Note:
-		/// 	Re-compute the total stake and called every staking extrinsics.
+		/// 	Re-compute the total stake and called every staking extrinsic.
 		/// 	Once the total is completed immediately sort the proposed candidates.
 		pub fn total_stake_proposed_candidate(proposed_candidate: T::AccountId) -> DispatchResult {
 			let mut proposed_candidates = ProposedCandidates::<T>::get();
@@ -670,7 +691,39 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 			})
 		}
 
-		/// Assemble the final collator nodes by updating the pallet_collator_selection invulnerables.
+		/// Slashed misbehaving authors
+		/// Note:
+		/// 	Assumes that Aura will give all author the opportunity to author blocks in round robbin fashion.
+		/// 	Once we can guarantee a round robbin authorship in Aura we will add the slash amount, as of the
+		///     moment we will just set the author offline.
+		pub fn slashed_authors() -> DispatchResult {
+			// Todo: Get the authors that did author a block for this session.  Make the author is not a desired
+			//       candidate.
+			let invulnerables = pallet_collator_selection::Invulnerables::<T>::get();
+			let authors = ActualAuthors::<T>::get();
+			let desired_candidates = DesiredCandidates::<T>::get();
+			let non_authors: Vec<T::AccountId> = invulnerables
+				.into_iter()
+				.filter(|invulnerable| !authors.contains(invulnerable))
+				.collect();
+			let filtered_non_authors: Vec<T::AccountId> = non_authors
+				.into_iter()
+				.filter(|non_author| !desired_candidates.contains(non_author))
+				.collect();
+			
+			for filtered_non_author in filtered_non_authors.iter() {
+				// Todo: Slashed the author and make it offline, prerequisite Aura Round Robbin
+				let _ = Self::offline_proposed_candidate(filtered_non_author.clone(),true);
+
+				// Todo: Slashed the delegator for that author, Prerequisite Aura Round Robbin
+			}
+			
+			// Clear the new set of actual authors
+			ActualAuthors::<T>::put(BoundedVec::default());
+			Ok(())
+		}
+
+		/// Assemble the final collator nodes by updating the pallet_collator_selection invulnerable.
 		/// Note:
 		/// 	This helper function is called every new session.
 		pub fn assemble_collators() -> DispatchResult {
@@ -678,7 +731,7 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 			let waiting_candidates = WaitingCandidates::<T>::get();
 			ensure!(!waiting_candidates.is_empty(), Error::<T>::WaitingCandidatesEmpty);
 
-			// Remove the invulnerables not in the waiting candidates to save space
+			// Remove the invulnerable not in the waiting candidates to save space
 			let mut invulnerables = pallet_collator_selection::Invulnerables::<T>::get();
 			invulnerables.retain(|account| waiting_candidates.contains(account));
 			pallet_collator_selection::Invulnerables::<T>::put(invulnerables);
@@ -704,7 +757,7 @@ use frame_support::{dispatch::DispatchResultWithPostInfo, pallet_prelude::*, };
 	impl<T: Config> SessionManager<T::AccountId> for Pallet<T> {
 		fn new_session(_index: SessionIndex) -> Option<Vec<T::AccountId>> {
 			// Restart actual authors
-			ActualAuthors::<T>::put(BoundedVec::default());
+			let _ = Self::slashed_authors();
 			
 			// Set new collators
 			let _ = Self::assemble_collators();
