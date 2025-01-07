@@ -1,5 +1,5 @@
 - [Introduction](README.md)
 - [Section 1](section1.md)
+  - [Subsection 2.2](section1.1.md)
 - [Section 2](section2.md)
   - [Subsection 2.1](section2.1.md)
-  - [Subsection 2.2](section2.2.md)
