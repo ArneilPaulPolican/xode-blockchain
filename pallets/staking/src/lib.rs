@@ -65,8 +65,7 @@ pub mod pallet {
 
 	/// Runtime configuration
 	#[pallet::config]
-	pub trait Config: pallet_balances::Config + 
-		pallet_collator_selection::Config + 
+	pub trait Config: pallet_collator_selection::Config + 
 		pallet_aura::Config + 
 		pallet_authorship::Config + 
 		pallet_session::Config + 
