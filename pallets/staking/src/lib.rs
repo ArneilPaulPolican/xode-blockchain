@@ -362,11 +362,9 @@ pub mod pallet {
 				ensure!(!WaitingCandidates::<T>::get().contains(&who), Error::<T>::WaitingCandidateMember);
 				ensure!(!pallet_collator_selection::Invulnerables::<T>::get().contains(&who), Error::<T>::InvulernableMember);
 				ensure!(!Self::still_authoring(who.clone()), Error::<T>::AuraAuthorityMember);
-			} else {
-				ensure!(T::StakingCurrency::free_balance(&who) >= new_bond, Error::<T>::ProposedCandidateInsufficientBalance);
-			}
+			} 
 
-			ProposedCandidates::<T>::mutate(|candidates| {
+			let _ = ProposedCandidates::<T>::try_mutate(|candidates| -> Result<(), DispatchError> {
 				if let Some(candidate) = candidates.iter_mut().find(|c| c.who == who) {
 					if candidate.bond > new_bond {
 						// Decrease the bond and reserve or might leave (new bond == 0)
@@ -384,11 +382,15 @@ pub mod pallet {
 						let bond_diff = new_bond.saturating_sub(candidate.bond);
 						candidate.bond = new_bond;
 						if bond_diff > Zero::zero() {
+							// Ensure the free balance can accommodate the bond_diff
+							ensure!(T::StakingCurrency::free_balance(&who) >= bond_diff, Error::<T>::ProposedCandidateInsufficientBalance);
+
 							let _ = T::StakingCurrency::reserve(&who, bond_diff);
 							candidate.last_updated = frame_system::Pallet::<T>::block_number();
 						}
 					}
 				}
+				Ok(())
 			});
 
 			Self::sort_proposed_candidates();
