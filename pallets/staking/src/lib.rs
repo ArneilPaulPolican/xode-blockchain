@@ -375,7 +375,8 @@ pub mod pallet {
 						let bond_diff = candidate.bond.saturating_sub(new_bond);
 						candidate.bond = new_bond;
 						if bond_diff > Zero::zero() {
-							T::StakingCurrency::unreserve(&who, bond_diff);
+							let _ = T::StakingCurrency::unreserve(&who, bond_diff);
+							candidate.last_updated = frame_system::Pallet::<T>::block_number();
 						}
 					} else {
 						// Increase the bond and reserve.  If the new bond is greater than the existing bond then just replace
@@ -384,9 +385,9 @@ pub mod pallet {
 						candidate.bond = new_bond;
 						if bond_diff > Zero::zero() {
 							let _ = T::StakingCurrency::reserve(&who, bond_diff);
+							candidate.last_updated = frame_system::Pallet::<T>::block_number();
 						}
 					}
-					candidate.last_updated = frame_system::Pallet::<T>::block_number();
 				}
 			});
 
