@@ -288,12 +288,16 @@ pub mod pallet {
 			match NextBlockNumber::<T>::get() {
 				Some(_next_block) => {
 					// Todo, since this is replaced by session
-					T::DbWeight::get().reads(1)
+
+					// Weights covers authoring
+					T::DbWeight::get().reads_writes(2, 2)
 				}
 				None => {
 					// At block zero
 					Self::add_xaver_nodes();
-					T::DbWeight::get().reads(1)
+
+					// Weights covers desired and waiting from xaver node setup (14 nodes)
+					T::DbWeight::get().reads_writes(14, 28)
 				}
 			}
 		}
