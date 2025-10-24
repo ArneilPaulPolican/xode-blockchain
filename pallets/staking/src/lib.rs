@@ -941,7 +941,7 @@ pub mod pallet {
 				ProposedCandidates::<T>::mutate(|candidates| {
 					if let Some(candidate) = candidates.iter_mut().find(|c| c.who == waiting_candidate) {
 						if candidate.status == Status::Waiting {
-							let _ = candidate.status == Status::Queuing;
+							candidate.status = Status::Queuing;
 						}
 					}
 				});
