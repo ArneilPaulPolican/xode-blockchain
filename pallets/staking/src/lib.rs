@@ -366,31 +366,43 @@ pub mod pallet {
 				ensure!(!WaitingCandidates::<T>::get().contains(&who), Error::<T>::WaitingCandidateMember);
 				ensure!(!pallet_collator_selection::Invulnerables::<T>::get().contains(&who), Error::<T>::InvulernableMember);
 				ensure!(!Self::still_authoring(who.clone()), Error::<T>::AuraAuthorityMember);
-			} 
-
+			} else {
+				let candidates = ProposedCandidates::<T>::get();
+				if let Some(candidate) = candidates.iter().find(|c| c.who == who) {
+					if candidate.bond == Zero::zero() {
+						ensure!(T::StakingCurrency::free_balance(&who) >= new_bond,Error::<T>::ProposedCandidateInsufficientBalance);
+					}
+				}
+			}
+			
 			let _ = ProposedCandidates::<T>::try_mutate(|candidates| -> Result<(), DispatchError> {
 				if let Some(candidate) = candidates.iter_mut().find(|c| c.who == who) {
-					if candidate.bond > new_bond {
-						// Decrease the bond and reserve or might leave (new bond == 0)
-						// Unreserve the difference, of the new bond is 0, unreserve the whole bond because the bond difference
-						// is equal to the existing bond because any number subtracted by 0 would remain the same.
-						let bond_diff = candidate.bond.saturating_sub(new_bond);
+
+					// If the current bond is zero the new bond is immediately reserved
+					if candidate.bond == Zero::zero() {
 						candidate.bond = new_bond;
-						if bond_diff > Zero::zero() {
-							let _ = T::StakingCurrency::unreserve(&who, bond_diff);
-							candidate.last_updated = frame_system::Pallet::<T>::block_number();
-						}
+						candidate.last_updated = frame_system::Pallet::<T>::block_number();
+
+						let _ = T::StakingCurrency::reserve(&who, new_bond);
+
 					} else {
-						// Increase the bond and reserve.  If the new bond is greater than the existing bond then just replace
-						// the current bond with the new one and get the difference to increase the reserve.
-						let bond_diff = new_bond.saturating_sub(candidate.bond);
-						candidate.bond = new_bond;
-						if bond_diff > Zero::zero() {
-							// Ensure the free balance can accommodate the bond_diff
-							ensure!(T::StakingCurrency::free_balance(&who) >= bond_diff, Error::<T>::ProposedCandidateInsufficientBalance);
+						// If the current bond exceeds the new bond - unreserve
+						if candidate.bond > new_bond {
+							let bond_diff = candidate.bond.saturating_sub(new_bond);
+
+							candidate.bond = new_bond;
+							candidate.last_updated = frame_system::Pallet::<T>::block_number();
+
+							let _ = T::StakingCurrency::unreserve(&who, bond_diff);
+						
+						// If the new bond exceeds than the current bond - add to reserve
+						} else if new_bond > candidate.bond {
+							let bond_diff = new_bond.saturating_sub(candidate.bond);
+
+							candidate.bond = new_bond;
+							candidate.last_updated = frame_system::Pallet::<T>::block_number();
 
 							let _ = T::StakingCurrency::reserve(&who, bond_diff);
-							candidate.last_updated = frame_system::Pallet::<T>::block_number();
 						}
 					}
 				}
