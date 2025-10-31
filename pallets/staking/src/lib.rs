@@ -35,6 +35,8 @@ mod mock;
 mod tests;
 #[cfg(test)]
 mod tests_calls;
+#[cfg(test)]
+mod tests_audits;
 
 pub mod weights;
 pub use weights::*;
@@ -375,7 +377,7 @@ pub mod pallet {
 				}
 			}
 			
-			let _ = ProposedCandidates::<T>::try_mutate(|candidates| -> Result<(), DispatchError> {
+			let _ = ProposedCandidates::<T>::mutate(|candidates| {
 				if let Some(candidate) = candidates.iter_mut().find(|c| c.who == who) {
 
 					// If the current bond is zero the new bond is immediately reserved
@@ -406,7 +408,6 @@ pub mod pallet {
 						}
 					}
 				}
-				Ok(())
 			});
 
 			Self::sort_proposed_candidates();
