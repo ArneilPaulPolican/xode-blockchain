@@ -11,9 +11,10 @@ use frame_support::traits::{
 	Hooks,
 };
 
-// https://github.com/Xode-DAO/xode-blockchain/issues/106
+// https://github.com/Xode-DAO/xode-blockchain/issues/111
+// https://github.com/Xode-DAO/xode-blockchain/issues/110
 #[test]
-fn test_pallet_xode_staking_last_updated_works() {
+fn test_pallet_xode_staking_last_updated_and_incorrect_balance_works() {
 	test1_ext().execute_with(|| {
 		System::set_block_number(0);
 		XodeStaking::on_initialize(System::block_number());
@@ -72,15 +73,6 @@ fn test_pallet_xode_staking_last_updated_works() {
 
 		assert_eq!(proposed_candidates[0].last_updated, 2, "Must match");
 		assert_eq!(proposed_candidates[0].bond, 15_000_000_000_000_000u128, "Must match");
-	});
-}
-
-// https://github.com/Xode-DAO/xode-blockchain/issues/107
-#[test]
-fn test_pallet_xode_staking_incorrect_balance_works() {
-	test1_ext().execute_with(|| {
-        let candidate = 1;
-		assert_ok!(XodeStaking::register_candidate(RuntimeOrigin::signed(candidate)));
 	});
 }
 
