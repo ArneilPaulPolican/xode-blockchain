@@ -2,6 +2,7 @@ use crate::{
 	mock::*, 
 	ProposedCandidates,
 	Status,
+	NextBlockNumber,
 };
 use frame_support::{
 	assert_ok,
@@ -240,7 +241,23 @@ fn test_pallet_xode_staking_assignment_operator_works() {
 #[test]
 fn test_pallet_xode_staking_on_initialize_weight_works() {
 	test1_ext().execute_with(|| {
-        let candidate = 1;
-		assert_ok!(XodeStaking::register_candidate(RuntimeOrigin::signed(candidate)));
+		System::set_block_number(0);
+		let weight = XodeStaking::on_initialize(System::block_number());
+
+		// Heavy weight is called only when the next block is explicitly cleared which only
+		// happens at block 0.
+
+		let expected = <Test as frame_system::Config>::DbWeight::get().reads_writes(14, 28);
+        assert_eq!(weight, expected);		
+
+		// To test if there is a next block which usually the setup on every Substrate chain.
+
+		NextBlockNumber::<Test>::put(2);
+
+		System::set_block_number(1);
+		let weight = XodeStaking::on_initialize(System::block_number());
+
+		let expected = <Test as frame_system::Config>::DbWeight::get().reads_writes(2, 2);
+        assert_eq!(weight, expected);		
 	});
 }
